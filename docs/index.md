@@ -4,7 +4,7 @@
 import { ref } from 'vue'
 const flow = ['上传商品图', 'AI 自动分析', '生成候选图', 'QC / 人工审核', '导出规格包']
 const stack = [
-  { name: 'Go 后端', note: 'chi · sqlc · River 队列', tag: 'server' },
+  { name: 'Go 后端', note: 'chi · GORM · River 队列', tag: 'server' },
   { name: 'PostgreSQL', note: '业务数据 + 任务', tag: 'data' },
   { name: 'S3 / R2', note: '原图 · 缩略图 · 导出', tag: 'storage' },
   { name: 'Next.js', note: 'Web 生产工作台', tag: 'web' },

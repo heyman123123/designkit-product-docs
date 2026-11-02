@@ -49,10 +49,11 @@ Web (Next.js)                 App (Expo RN)
 | --- | --- | --- |
 | Web | Next.js + TypeScript + TanStack Query | 批量生产和管理 |
 | App | Expo React Native | 采集、进度、审核、分享 |
-| 后端 | Go 1.22+，chi 路由，sqlc + pgx | 单体内聚、类型安全的 SQL |
+| 后端 | Go 1.22+，chi 路由，GORM v2 | 单体内聚、开发快、模型即代码 |
 | 数据库 | PostgreSQL 16 | 业务数据 + 任务队列 |
-| 任务队列 | River（基于 Postgres） | 无需 Redis，重试/定时/唯一键 |
-| 迁移 | golang-migrate | 版本化 schema |
+| 驱动 | GORM + pgx（`pgx/v5/stdlib`） | ORM 易用，底层仍走 pgx 连接池 |
+| 任务队列 | River（复用同一 pgx 连接池） | 无需 Redis，重试/定时/唯一键 |
+| 迁移 | golang-migrate（生产），AutoMigrate 仅本地 | schema 可控、可回滚 |
 | 鉴权 | JWT（access + refresh），Argon2id 密码 | 无外部 Auth 依赖 |
 | 对象存储 | S3 兼容（R2/MinIO）+ CDN | 原图、缩略图、导出包 |
 | 实时 | SSE（`/events`） | 任务状态推送，比 WebSocket 简单 |
@@ -81,11 +82,53 @@ internal/
   storage/             # S3 客户端封装
   platform/            # 配置、DB、日志、中间件
 db/
-  migrations/          # golang-migrate SQL
-  queries/             # sqlc 输入
+  migrations/          # golang-migrate SQL（生产唯一入口）
+internal/model/        # GORM 模型定义
+internal/repository/   # 基于 GORM 的仓储层，全部方法带 ctx
 ```
 
 原则：API 与 Worker 共享 `internal/*`，只是入口不同；不拆微服务。
+
+## 数据库连接（GORM）
+
+单例 `*gorm.DB` 在 `platform` 包内初始化，API 与 Worker 共用连接池；业务层只依赖 repository 接口，不直接调 `gorm.DB`，便于测试时替换。
+
+```go
+func NewDB(cfg Config) (*gorm.DB, error) {
+    // 底层交给 pgx，保留连接池与预编译能力
+    sqlDB, err := sql.Open("pgx", cfg.DSN) // pgx/v5/stdlib 注册的 driver
+    if err != nil {
+        return nil, err
+    }
+    sqlDB.SetMaxOpenConns(cfg.MaxOpenConns) // 默认 25
+    sqlDB.SetMaxIdleConns(cfg.MaxIdleConns) // 默认 10
+    sqlDB.SetConnMaxLifetime(30 * time.Minute)
+    sqlDB.SetConnMaxIdleTime(10 * time.Minute)
+
+    db, err := gorm.Open(postgres.New(postgres.Config{Conn: sqlDB}), &gorm.Config{
+        Logger:                 gormlogger.Default.LogMode(cfg.LogLevel),
+        SkipDefaultTransaction: true, // 单条写入不需要隐式事务
+        PrepareStmt:            true, // 预编译，热点查询更稳
+        NowFunc:                func() time.Time { return time.Now().UTC() },
+    })
+    if err != nil {
+        return nil, err
+    }
+    return db, nil
+}
+```
+
+约定：
+
+- **时区与精度**：全部 `timestamptz`，`NowFunc` 统一 UTC，避免跨端时间漂移。
+- **上下文**：所有仓储方法带 `ctx`，用 `db.WithContext(ctx)`，超时与取消一路传导到 PG。
+- **事务**：多表写入（生成结果 + 用量流水 + 审计日志）用 `db.Transaction(func(tx *gorm.DB) error {...})`，事务内继续 `tx.WithContext(ctx)`。
+- **软删除**：模型内嵌 `gorm.DeletedAt`，查询默认过滤；审计场景用 `Unscoped()` 显式读取。
+- **空间隔离**：中间件把 `workspace_id` 写入 `ctx`，repository 强制 `Where("workspace_id = ?", wsID)`；敏感表在同一事务执行 `SET LOCAL app.workspace_id = ?`，让 Postgres RLS 生效。
+- **任务队列**：River 与 GORM 共享底层 `*sql.DB`，避免两套连接池打满数据库。
+- **迁移**：生产只走 `golang-migrate`；`AutoMigrate` 仅限本地开发，禁止应用启动时自动改表。
+- **观测**：GORM 慢查询日志（>200ms 记 warn），关键查询加 Prometheus 直方图，`PrepareStmt` 句柄数纳入监控。
+- **连接失败**：启动重试 3 次（指数退避），`/healthz` 分别报告 `db` 与 `queue` 状态。
 
 ## 核心数据模型
 

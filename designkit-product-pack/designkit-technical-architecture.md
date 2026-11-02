@@ -43,10 +43,10 @@ Web (Next.js)                 App (Expo RN)
 
 - Web：Next.js、TypeScript、Tailwind/shadcn、TanStack Query。
 - App：Expo React Native，复用 API client 与类型生成结果。
-- 后端：Go 1.22+，chi 路由，sqlc + pgx。
+- 后端：Go 1.22+，chi 路由，GORM v2（底层 pgx 驱动）。
 - 数据库：PostgreSQL 16，业务数据与任务队列同库。
-- 队列：River（基于 Postgres），支持重试、定时、唯一任务。
-- 迁移：golang-migrate；schema 版本化。
+- 队列：River（复用同一 pgx 连接池），支持重试、定时、唯一任务。
+- 迁移：golang-migrate 管理生产 schema，AutoMigrate 仅限本地。
 - 鉴权：JWT（access + refresh 轮换）、Argon2id 密码哈希。
 - 媒体：S3 兼容存储 + CDN；`imaging` / libvips 做缩略图与裁切。
 - 实时：SSE `/v1/events`，断线用 `Last-Event-ID` 续传。
@@ -70,11 +70,37 @@ internal/export/       # ZIP 打包、规格校验
 internal/billing/      # 配额、用量流水
 internal/storage/      # S3 封装
 internal/platform/     # 配置、DB、日志、中间件
-db/migrations/         # golang-migrate SQL
-db/queries/            # sqlc 输入
+internal/model/        # GORM 模型
+internal/repository/   # GORM 仓储层，全部方法带 ctx
+db/migrations/         # golang-migrate SQL（生产唯一入口）
 ```
 
 API 与 Worker 共用 `internal/*`，仅入口不同；不拆微服务。
+
+## 5. 数据库连接（GORM）
+
+单例 `*gorm.DB` 在 `platform` 包初始化，API 与 Worker 共用；业务层只依赖 repository 接口。
+
+```go
+func NewDB(cfg Config) (*gorm.DB, error) {
+    sqlDB, err := sql.Open("pgx", cfg.DSN) // pgx/v5/stdlib
+    if err != nil {
+        return nil, err
+    }
+    sqlDB.SetMaxOpenConns(cfg.MaxOpenConns)
+    sqlDB.SetMaxIdleConns(cfg.MaxIdleConns)
+    sqlDB.SetConnMaxLifetime(30 * time.Minute)
+
+    return gorm.Open(postgres.New(postgres.Config{Conn: sqlDB}), &gorm.Config{
+        Logger:                 gormlogger.Default.LogMode(cfg.LogLevel),
+        SkipDefaultTransaction: true,
+        PrepareStmt:            true,
+        NowFunc:                func() time.Time { return time.Now().UTC() },
+    })
+}
+```
+
+约定：全部 `timestamptz` 且统一 UTC；仓储方法带 `ctx` 并用 `db.WithContext`；多表写入走 `db.Transaction`；软删除用 `gorm.DeletedAt`；中间件注入 `workspace_id`，repository 强制过滤，敏感表同事务 `SET LOCAL app.workspace_id` 让 RLS 生效；River 与 GORM 共享同一 `*sql.DB`；生产禁止 AutoMigrate。
 
 ## 5. 数据模型
 
