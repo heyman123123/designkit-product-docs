@@ -1,11 +1,16 @@
 # DesignKit Commerce Visual OS
 
 <script setup>
-import { computed, ref } from 'vue'
-const active = ref('Web 工作台')
-const tabs = ['Web 工作台', 'App 审核', '设计系统']
+import { ref } from 'vue'
 const flow = ['上传商品图', 'AI 自动分析', '生成候选图', 'QC / 人工审核', '导出规格包']
-const selected = computed(() => active.value)
+const stack = [
+  { name: 'Go 后端', note: 'chi · sqlc · River 队列', tag: 'server' },
+  { name: 'PostgreSQL', note: '业务数据 + 任务', tag: 'data' },
+  { name: 'S3 / R2', note: '原图 · 缩略图 · 导出', tag: 'storage' },
+  { name: 'Next.js', note: 'Web 生产工作台', tag: 'web' },
+  { name: 'Expo RN', note: 'App 采集与审核', tag: 'app' },
+  { name: 'SSE', note: '任务状态实时推送', tag: 'realtime' },
+]
 </script>
 
 <div class="hero-panel">
@@ -37,10 +42,18 @@ const selected = computed(() => active.value)
   <a href="/prd"><b>PRD</b><span>目标、场景、功能需求、用户故事和验收标准</span></a>
   <a href="/prototype"><b>需求原型</b><span>Web/App 页面、流程、状态矩阵和交互说明</span></a>
   <a href="/ui-design"><b>UI 设计稿</b><span>视觉 token、组件、响应式和可访问性规范</span></a>
-  <a href="/technical-architecture"><b>技术架构</b><span>Web、App、AI 异步任务、数据模型和安全</span></a>
+  <a href="/technical-architecture"><b>技术架构</b><span>Go 后端、Web/App、任务队列、数据模型和安全</span></a>
   <a href="/growth-plan"><b>推广与商业化</b><span>定价、付费墙、获客渠道、漏斗和止损</span></a>
   <a href="/delivery-plan"><b>落地与上线</b><span>7/30/60/90 天计划、测试和上线门禁</span></a>
 </div>
+
+## 技术栈
+
+<div class="stack-grid">
+  <div v-for="item in stack" :key="item.name" class="stack-item"><b>{{ item.name }}</b><span>{{ item.note }}</span></div>
+</div>
+
+**后端为 Go 单体服务**：API 与 Worker 共用同一套 `internal/*` 领域代码，两个入口、一次部署；PostgreSQL 同时承载业务数据与任务队列，不额外引入 Redis。
 
 ## 产品边界
 
