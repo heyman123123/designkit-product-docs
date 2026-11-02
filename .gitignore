@@ -3,3 +3,6 @@ node_modules/
 docs/.vitepress/dist/
 docs/.vitepress/cache/
 .DS_Store
+.gocache/
+.gomodcache/
+designkit-commerce/

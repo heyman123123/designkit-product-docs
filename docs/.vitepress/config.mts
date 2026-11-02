@@ -20,6 +20,7 @@ export default defineConfig({
       { text: '技术架构', link: '/technical-architecture' },
       { text: '多租户', link: '/multi-tenant' },
       { text: '管理后台', link: '/admin-console' },
+      { text: '计费与收款', link: '/payment' },
       { text: '实现规划', link: '/implementation-plan' },
       { text: '商业化', link: '/growth-plan' },
     ],
@@ -27,7 +28,7 @@ export default defineConfig({
       '/': [
         { text: '项目总览', items: [{ text: '产品总览', link: '/' }, { text: 'PRD', link: '/prd' }] },
         { text: '设计交付', items: [{ text: '需求原型', link: '/prototype' }, { text: 'UI 设计稿', link: '/ui-design' }] },
-        { text: '工程交付', items: [{ text: '技术架构', link: '/technical-architecture' }, { text: '多租户与 SaaS', link: '/multi-tenant' }, { text: '管理后台', link: '/admin-console' }, { text: '落地与上线', link: '/delivery-plan' },
+        { text: '工程交付', items: [{ text: '技术架构', link: '/technical-architecture' }, { text: '多租户与 SaaS', link: '/multi-tenant' }, { text: '管理后台', link: '/admin-console' }, { text: '计费与收款', link: '/payment' }, { text: '落地与上线', link: '/delivery-plan' },
             { text: '全功能实现规划', link: '/implementation-plan' }] },
         { text: '商业化', items: [{ text: '推广与增长', link: '/growth-plan' }] },
       ],
