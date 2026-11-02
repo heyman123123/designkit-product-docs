@@ -181,6 +181,12 @@ SSE 在每个状态变更时推送 `{job_id, status, progress, message}`；断�
 
 按 SKU 和高清导出计费；预览低清；失败重试不重复扣费；每账号月度成本上限，超出即限流。图像成本目标 ≤订阅收入 35%。所有 provider 调用记录 `model`、`tokens/张数`、`cost`、耗时，便于按天对账。
 
+## 租户与平台后台
+
+产品以 SaaS 多租户方式交付，**租户 = Workspace**；所有业务数据强制带 `workspace_id`，共享库 + 行级隔离，敏感表 RLS 兜底。详见 [多租户与 SaaS 模式](/multi-tenant)。
+
+平台运营侧需要独立的 [管理后台](/admin-console)：`/v1/admin/*` 使用独立中间件与独立 JWT audience，`platform_admin` 不属于任何租户，租户 token 与后台 token 不能互换。
+
 ## MVP 交付切片
 
 - M0（3–4 天）：Go 项目骨架、迁移、JWT 鉴权、Workspace 隔离、Project/SKU/Folder CRUD。

@@ -42,7 +42,9 @@ const stack = [
   <a href="/prd"><b>PRD</b><span>目标、场景、功能需求、用户故事和验收标准</span></a>
   <a href="/prototype"><b>需求原型</b><span>Web/App 页面、流程、状态矩阵和交互说明</span></a>
   <a href="/ui-design"><b>UI 设计稿</b><span>视觉 token、组件、响应式和可访问性规范</span></a>
-  <a href="/technical-architecture"><b>技术架构</b><span>Go 后端、Web/App、任务队列、数据模型和安全</span></a>
+  <a href="/technical-architecture"><b>技术架构</b><span>Go 后端、GORM、任务队列、数据模型和安全</span></a>
+  <a href="/multi-tenant"><b>多租户与 SaaS</b><span>租户模型、隔离策略、角色、订阅与生命周期</span></a>
+  <a href="/admin-console"><b>管理后台</b><span>租户运营、订阅、成本、任务运维与风控</span></a>
   <a href="/growth-plan"><b>推广与商业化</b><span>定价、付费墙、获客渠道、漏斗和止损</span></a>
   <a href="/delivery-plan"><b>落地与上线</b><span>7/30/60/90 天计划、测试和上线门禁</span></a>
 </div>
